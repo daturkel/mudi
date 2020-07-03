@@ -18,6 +18,7 @@ jobs:
         uses: dschep/install-poetry-action@v1.3
         with:
           version: 1.0.9
+          create_virtualenvs: true
       - name: Cache
         uses: actions/cache@v2.0.0
         with:
