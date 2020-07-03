@@ -1,0 +1,30 @@
+
+name: Build Pull Request
+
+on: [pull_request]
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.6
+      - name: Install Poetry
+        uses: dschep/install-poetry-action@v1.3
+        with:
+          version: 1.0.9
+      - name: Cache
+        uses: actions/cache@v2.0.0
+        with:
+          path: ~/.virtualenvs
+          key: poetry-venv-${{ hashFiles('poetry.lock') }}
+      - name: Install Dependencies via Poetry
+        run: poetry install
+        if: steps.cache.outputs.cache-hit != 'true'
+      - name: Run mypy
+        uses: jpetrucciani/mypy-check@0.761
+      - name: Run black
+        run: poetry run black . --check
