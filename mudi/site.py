@@ -41,7 +41,9 @@ class Site:
         self.collections: DefaultDict[str, List[Page]] = defaultdict(list)
 
         self.env = Environment(
-            loader=FileSystemLoader(self.template_dir),
+            # cast template_dir to str to satisfy mypy on python versions <3.7
+            # https://github.com/python/typeshed/blob/master/third_party/2and3/jinja2/loaders.pyi#L7-L12
+            loader=FileSystemLoader(str(self.template_dir)),
             trim_blocks=True,
             lstrip_blocks=True,
         )
