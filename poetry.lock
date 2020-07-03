@@ -50,7 +50,7 @@ typed-ast = ">=1.4.0"
 d = ["aiohttp (>=3.3.2)", "aiohttp-cors"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Composable command line interface toolkit"
 name = "click"
 optional = false
@@ -359,7 +359,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "98dd52763009449cccf4eda3a3da84f2cc2ef78fcf81c2912758ceb85b28bb71"
+content-hash = "7c4557a2bdcfd5af73c3ee62fec0547ee95c376379a28145391e288cd484e536"
 python-versions = "^3.6"
 
 [metadata.files]
