@@ -4,7 +4,7 @@ from pathlib import Path
 import sass
 import shutil
 import toml
-from typing import DefaultDict, List, Optional
+from typing import DefaultDict, Dict, List, Optional
 
 from .collection import Collection
 from .loaders import load_html_file, load_md_file
@@ -27,6 +27,7 @@ class Site:
         self.ctx: dict = site_config_dict.pop("ctx", {})
         # TODO: Think about the feeds api
         self.feeds = Feeds(feeds=site_config_dict.pop("feed", []))
+        self.sass_settings: Optional[SassSettings]
         if "sass" in site_config_dict:
             self.sass_settings = SassSettings(**site_config_dict.pop("sass"))
         else:
@@ -37,7 +38,7 @@ class Site:
         self.files: List[Path] = []
         self.files_to_copy: List[Path] = []
         self.pages: Dict[str, Page] = {}
-        self.collections: DefaultDict[List[Collection]] = defaultdict(list)
+        self.collections: DefaultDict[str, List[Page]] = defaultdict(list)
 
         self.env = Environment(
             loader=FileSystemLoader(self.template_dir),
@@ -66,10 +67,13 @@ class Site:
         return self.settings.output_dir
 
     def is_sass_file(self, filename: Path) -> bool:
-        return (
-            filename.suffix in [".sass", ".scss"]
-            and self.sass_settings.sass_dir in filename.parents
-        )
+        if self.sass_settings is None:
+            return False
+        else:
+            return (
+                filename.suffix in [".sass", ".scss"]
+                and self.sass_settings.sass_dir in filename.parents
+            )
 
     def _parse_tree(self):
         self.files = [
@@ -89,7 +93,7 @@ class Site:
                 content, metadata = load_html_file(filename)
                 page = Page(name=name, content=content, metadata=metadata)
                 self._register_page(page)
-            elif self.sass_settings is not None and self.is_sass_file(Path(filename)):
+            elif self.is_sass_file(Path(filename)):
                 continue
             else:
                 self.files_to_copy.append(filename)
@@ -99,11 +103,13 @@ class Site:
     def _register_page(self, page: Page):
         self.pages[page.name] = page
         for collection in page.collections:
-            self.collections[collection].append(page.name)
+            self.collections[collection].append(page)
             self.env.globals["collections"] = self.collections
 
     def render_page(self, page: Page):
-        template = self.env.get_template(page.template or self.default_template)
+        template = self.env.get_template(
+            page.template or self.settings.default_template
+        )
         output = template.render(content=page.content, page=page)
         output_filename = self.settings.output_dir / Path(page.name).with_suffix(
             ".html"
@@ -121,8 +127,8 @@ class Site:
 
     def copy_file(self, filename: Path):
         output_filename = path_swap(filename, self.content_dir, self.output_dir)
-        output_filename.parent.mkdir(parent=True, exist_ok=True)
-        shutil.copy(file_, output_filename)
+        output_filename.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(filename, output_filename)
 
     def make(self):
         for file_ in self.files_to_copy:

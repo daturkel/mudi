@@ -33,6 +33,7 @@ class Page:
         """
         self.name = name
         self.content = "" if content is None else content
+        self.template: Optional[str]
         if metadata is None:
             self.template = None
             self.collections = []

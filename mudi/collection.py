@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple
 
 from .page import Page
 
@@ -6,14 +6,16 @@ from .page import Page
 class Collection:
     def __init__(self, name: str, pages: Optional[List[Page]] = None):
         self.name = name
-        self.pages = [] if pages is not None else pages
+        self.pages: List[Page] = pages or []
 
-    def sorted_by(keys: List[Tuple[str, str, str]]) -> List[str]:
+    def sorted_by(
+        self, keys: List[Tuple[str, bool, Any]], name: Optional[str] = None
+    ) -> Collection:
         if not len(self.pages):
-            return self.pages
+            return Collection(name=name or self.name, pages=self.pages)
         sorted_pages = self.pages
         for key, reverse, default in reversed(keys):
             sorted_pages = sorted(
-                pages, key=lambda x: x.get(key, default), reverse=reverse
+                sorted_pages, key=lambda x: x.get(key, default), reverse=reverse
             )
-        return [page.name for page in sorted_pages]
+        return Collection(name=name or self.name, pages=sorted_pages)

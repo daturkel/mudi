@@ -33,5 +33,5 @@ class SiteSettings(BaseModel):
     output_dir: Path = Path("dist")
     template_dir: Path = Path("templates")
     content_dir: Path = Path("content")
-    default_template: Path = Path("default.html")
+    default_template: str = "default.html"
     absolute_link: Optional[AnyHttpUrl] = None
