@@ -4,7 +4,7 @@ from pathlib import Path
 import sass
 import shutil
 import toml
-from typing import DefaultDict, Dict, List, Optional
+from typing import DefaultDict, Dict, List, Optional, Union
 
 from .collection import Collection
 from .loaders import load_html_file, load_md_file
@@ -15,25 +15,15 @@ from .utils import path_swap, rel_name
 
 class Site:
     def __init__(
-        self, site_config: str = "site.toml", output_dir: Optional[str] = None,
+        self,
+        site_settings: SiteSettings,
+        ctx: Optional[dict] = None,
+        feeds: Optional[Feeds] = None,
     ):
-        # Open the site_config file and load its contents into a dict
-        with open(site_config, "r") as f:
-            site_config_dict = toml.load(f)
-        # Check for output_dir override
-        if output_dir is not None:
-            site_config_dict["output_dir"] = output_dir
-        # Remove special fields/sections to their own attributes
-        self.ctx: dict = site_config_dict.pop("ctx", {})
-        # TODO: Think about the feeds api
-        self.feeds = Feeds(feeds=site_config_dict.pop("feed", []))
-        self.sass_settings: Optional[SassSettings]
-        if "sass" in site_config_dict:
-            self.sass_settings = SassSettings(**site_config_dict.pop("sass"))
-        else:
-            self.sass_settings = None
-        # The rest goes to self.settings
-        self.settings = SiteSettings(**site_config_dict)
+
+        self.settings = site_settings
+        self.ctx = ctx if ctx is not None else {}
+        self.feeds = feeds if feeds is not None else Feeds()
 
         self.files: List[Path] = []
         self.files_to_copy: List[Path] = []
@@ -69,12 +59,12 @@ class Site:
         return self.settings.output_dir
 
     def is_sass_file(self, filename: Path) -> bool:
-        if self.sass_settings is None:
+        if self.settings.sass is None:
             return False
         else:
             return (
                 filename.suffix in [".sass", ".scss"]
-                and self.sass_settings.sass_dir in filename.parents
+                and self.settings.sass.sass_dir in filename.parents
             )
 
     def _parse_tree(self):
