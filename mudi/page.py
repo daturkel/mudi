@@ -4,7 +4,11 @@ from typing import Any, Optional, Tuple
 
 class Page:
     def __init__(
-        self, name: str, content: Optional[str] = None, metadata: Optional[dict] = None,
+        self,
+        name: str,
+        content: Optional[str] = None,
+        metadata: Optional[dict] = None,
+        content_format: str = "md",
     ):
         """An object containing data needed to render a single page.
 
@@ -34,14 +38,18 @@ class Page:
         self.name = name
         self.content = "" if content is None else content
         self.template: Optional[str]
+        self.content_format = content_format
+        self.has_jinja: bool
         if metadata is None:
             self.template = None
             self.collections = []
             self.ctx = {}
+            self.has_jinja = False
         else:
             self.template = metadata.pop("template", None)
             self.collections = metadata.pop("collections", [])
             self.ctx = metadata.pop("ctx", {})
+            self.has_jinja = metadata.pop("has_jinja", False)
 
     def get(self, key: str, default: Any = None) -> Any:
         """Fetch a page attribute, first trying the page class attributes, then page ctx,

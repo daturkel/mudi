@@ -1,5 +1,8 @@
 from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
+import logging
+import marko
+from marko.ext.codehilite import CodeHilite
 from pathlib import Path
 import sass
 import shutil
@@ -7,10 +10,12 @@ import toml
 from typing import DefaultDict, Dict, List, Optional, Union
 
 from .collection import Collection
+from .exceptions import NotInitializedError
 from .loaders import load_html_file, load_md_file
 from .models import Feeds, SassSettings, SiteSettings
+from .mudi_settings import MudiSettings
 from .page import Page
-from .utils import path_swap, rel_name
+from .utils import delete_directory_contents, path_swap, rel_name
 
 
 class Site:
@@ -19,6 +24,7 @@ class Site:
         site_settings: SiteSettings,
         ctx: Optional[dict] = None,
         feeds: Optional[Feeds] = None,
+        fully_initialize: bool = True,
     ):
 
         self.settings = site_settings
@@ -30,21 +36,59 @@ class Site:
         self.pages: Dict[str, Page] = {}
         self.collections: DefaultDict[str, List[Page]] = defaultdict(list)
 
-        self.env = Environment(
-            # cast template_dir to str to satisfy mypy on python versions <3.7
-            # https://github.com/python/typeshed/blob/master/third_party/2and3/jinja2/loaders.pyi#L7-L12
-            loader=FileSystemLoader(str(self.template_dir)),
-            trim_blocks=True,
-            lstrip_blocks=True,
-        )
-        self.env.globals = {
-            "site": {"ctx": self.ctx, "settings": self.settings},
-            "collections": self.collections,
-            "feeds": self.feeds,
-            "pages": self.pages,
-        }
+        self.env: Environment
 
-        self._parse_tree()
+        self.fully_initialized = False
+        if fully_initialize:
+            self._fully_initialize()
+
+    def _fully_initialize(self):
+        if not self.fully_initialized:
+            self.env = Environment(
+                # cast template_dir to str to satisfy mypy on python versions <3.7
+                # https://github.com/python/typeshed/blob/master/third_party/2and3/jinja2/loaders.pyi#L7-L12
+                loader=FileSystemLoader(str(self.template_dir)),
+                trim_blocks=True,
+                lstrip_blocks=True,
+            )
+            self.env.globals = {
+                "site": {"ctx": self.ctx, "settings": self.settings},
+                "collections": self.collections,
+                "feeds": self.feeds,
+                "pages": self.pages,
+            }
+
+            self._parse_tree()
+
+            self.md = marko.Markdown(extensions=["footnote"])
+            self.md.use(CodeHilite(style="monokai"))
+
+            self.fully_initialized = True
+
+    @classmethod
+    def from_mudi_settings(
+        cls, mudi_settings: MudiSettings, fully_initialize: bool = True,
+    ):
+        return cls(
+            site_settings=mudi_settings.site_settings,
+            ctx=mudi_settings.site_ctx,
+            feeds=mudi_settings.feeds,
+            fully_initialize=fully_initialize,
+        )
+
+    @classmethod
+    def from_settings_file(
+        cls,
+        settings_file: Path,
+        output_dir: Optional[Path] = None,
+        fully_initialize: bool = True,
+    ):
+        mudi_settings = MudiSettings(settings_file, output_dir)
+        return cls.from_mudi_settings(mudi_settings, fully_initialize)
+
+    @property
+    def input_dir(self) -> Path:
+        return self.settings.input_dir
 
     @property
     def template_dir(self) -> Path:
@@ -58,36 +102,56 @@ class Site:
     def output_dir(self) -> Path:
         return self.settings.output_dir
 
+    @property
+    def sass_in(self) -> Optional[Path]:
+        if self.settings.sass is not None:
+            return self.input_dir / self.settings.sass.sass_in
+        else:
+            return None
+
+    @property
+    def sass_out(self) -> Optional[Path]:
+        if self.settings.sass is not None:
+            return self.output_dir / self.settings.sass.sass_out
+        else:
+            return None
+
     def is_sass_file(self, filename: Path) -> bool:
         if self.settings.sass is None:
             return False
         else:
             return (
                 filename.suffix in [".sass", ".scss"]
-                and self.settings.sass.sass_dir in filename.parents
+                and self.sass_in in filename.parents
             )
 
     def _parse_tree(self):
         self.files = [
             filename
             for filename in Path(self.content_dir).glob("**/*")
-            if rel_name(filename, rel_path=self.content_dir)[0] != "."
+            if str(rel_name(filename, rel_path=self.content_dir))[0] != "."
         ]
 
         for filename in self.files:
-            name = rel_name(filename, rel_path=self.content_dir)
+            name = str(rel_name(filename, rel_path=self.content_dir))
             if Path(filename).suffix == ".md":
                 content, metadata = load_md_file(filename)
-                page = Page(name=name, content=content, metadata=metadata)
+                page = Page(name=name, content=content, metadata=metadata,)
+                logging.info(f"Registering {filename} as page {page.name}")
                 self._register_page(page)
             elif Path(filename).suffix == ".html":
                 # TODO: handle name collisions
                 content, metadata = load_html_file(filename)
-                page = Page(name=name, content=content, metadata=metadata)
+                page = Page(
+                    name=name, content=content, metadata=metadata, content_format="html"
+                )
+                logging.info(f"Registering {filename} as page {page.name}")
                 self._register_page(page)
             elif self.is_sass_file(Path(filename)):
+                logging.info(f"Found sass file {filename}")
                 continue
-            else:
+            elif Path(filename).is_file():
+                logging.info(f"Will copy file {filename}")
                 self.files_to_copy.append(filename)
 
         self.env.globals["pages"] = self.pages
@@ -98,11 +162,23 @@ class Site:
             self.collections[collection].append(page)
             self.env.globals["collections"] = self.collections
 
-    def render_page(self, page: Page):
+    def render_page(self, page: Union[Page, str]):
+        if isinstance(page, str):
+            page = self.pages[page]
+
+        if page.has_jinja:
+            content_template = self.env.from_string(page.content)
+            content = content_template.render(page=page)
+        else:
+            content = page.content
+
+        if page.content_format == "md":
+            content = self.md.convert(content).rstrip()
+
         template = self.env.get_template(
             page.template or self.settings.default_template
         )
-        output = template.render(content=page.content, page=page)
+        output = template.render(content=content, page=page)
         output_filename = self.settings.output_dir / Path(page.name).with_suffix(
             ".html"
         )
@@ -110,11 +186,15 @@ class Site:
         with open(output_filename, "w") as f:
             f.write(output)
 
+    def render_all_pages(self):
+        for page in self.pages:
+            self.render_page(page)
+
     def compile_sass(self):
-        if self.sass_settings is not None:
+        if self.settings.sass is not None:
             sass.compile(
-                dirname=(self.sass_settings.sass_dir, self.sass_settings.css_dir),
-                output_style=self.sass_settings.output_style,
+                dirname=(self.sass_in, self.sass_out),
+                output_style=self.settings.sass.output_style,
             )
 
     def copy_file(self, filename: Path):
@@ -122,9 +202,19 @@ class Site:
         output_filename.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(filename, output_filename)
 
-    def make(self):
+    def copy_all_files(self):
         for file_ in self.files_to_copy:
             self.copy_file(file_)
-        for page in self.pages.values():
-            self._render_page(page)
-        self._compile_sass()
+
+    def build(self):
+        if self.fully_initialized:
+            self.copy_all_files()
+            self.render_all_pages()
+            self.compile_sass()
+        else:
+            raise NotInitializedError(
+                "Site must be fully initialized before building. Run _fully_initialize."
+            )
+
+    def clean(self):
+        delete_directory_contents(self.output_dir)
