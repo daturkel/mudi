@@ -1,6 +1,8 @@
 from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 import logging
+import marko
+from marko.ext.codehilite import CodeHilite
 from pathlib import Path
 import sass
 import shutil
@@ -57,6 +59,9 @@ class Site:
             }
 
             self._parse_tree()
+
+            self.md = marko.Markdown(extensions=["footnote"])
+            self.md.use(CodeHilite(style="monokai"))
 
             self.fully_initialized = True
 
@@ -131,13 +136,15 @@ class Site:
             name = str(rel_name(filename, rel_path=self.content_dir))
             if Path(filename).suffix == ".md":
                 content, metadata = load_md_file(filename)
-                page = Page(name=name, content=content, metadata=metadata)
+                page = Page(name=name, content=content, metadata=metadata,)
                 logging.info(f"Registering {filename} as page {page.name}")
                 self._register_page(page)
             elif Path(filename).suffix == ".html":
                 # TODO: handle name collisions
                 content, metadata = load_html_file(filename)
-                page = Page(name=name, content=content, metadata=metadata)
+                page = Page(
+                    name=name, content=content, metadata=metadata, content_format="html"
+                )
                 logging.info(f"Registering {filename} as page {page.name}")
                 self._register_page(page)
             elif self.is_sass_file(Path(filename)):
@@ -164,6 +171,9 @@ class Site:
             content = content_template.render(page=page)
         else:
             content = page.content
+
+        if page.content_format == "md":
+            content = self.md.convert(content).rstrip()
 
         template = self.env.get_template(
             page.template or self.settings.default_template

@@ -4,7 +4,11 @@ from typing import Any, Optional, Tuple
 
 class Page:
     def __init__(
-        self, name: str, content: Optional[str] = None, metadata: Optional[dict] = None,
+        self,
+        name: str,
+        content: Optional[str] = None,
+        metadata: Optional[dict] = None,
+        content_format: str = "md",
     ):
         """An object containing data needed to render a single page.
 
@@ -34,6 +38,7 @@ class Page:
         self.name = name
         self.content = "" if content is None else content
         self.template: Optional[str]
+        self.content_format = content_format
         self.has_jinja: bool
         if metadata is None:
             self.template = None
