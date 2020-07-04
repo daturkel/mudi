@@ -15,8 +15,8 @@ class Feeds(BaseModel):
 
 
 class SassSettings(BaseModel):
-    sass_dir: Path
-    css_dir: Path
+    sass_in: Path = Path("sass")
+    sass_out: Path = Path("css")
     output_style: str = "nested"
 
     @validator("output_style")
