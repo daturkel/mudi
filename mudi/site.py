@@ -143,7 +143,7 @@ class Site:
             elif self.is_sass_file(Path(filename)):
                 logging.info(f"Found sass file {filename}")
                 continue
-            else:
+            elif Path(filename).is_file():
                 logging.info(f"Will copy file {filename}")
                 self.files_to_copy.append(filename)
 
