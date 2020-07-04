@@ -80,12 +80,24 @@ class Site:
         return cls.from_mudi_settings(mudi_settings, fully_initialize)
 
     @property
+    def input_dir(self) -> Path:
+        return self.settings.input_dir
+
+    @property
     def template_dir(self) -> Path:
         return self.settings.input_dir / self.settings.template_dir
 
     @property
     def content_dir(self) -> Path:
         return self.settings.input_dir / self.settings.content_dir
+
+    @property
+    def sass_in(self) -> Path:
+        return self.content_dir / self.settings.sass.sass_in
+
+    @property
+    def sass_out(self) -> Path:
+        return self.output_dir / self.settings.sass.sass_out
 
     @property
     def output_dir(self) -> Path:
@@ -131,7 +143,10 @@ class Site:
             self.collections[collection].append(page)
             self.env.globals["collections"] = self.collections
 
-    def render_page(self, page: Page):
+    def render_page(self, page: Union[Page, str]):
+        if isinstance(page, str):
+            page = self.pages[page]
+
         template = self.env.get_template(
             page.template or self.settings.default_template
         )
@@ -146,7 +161,7 @@ class Site:
     def compile_sass(self):
         if self.sass_settings is not None:
             sass.compile(
-                dirname=(self.sass_settings.sass_dir, self.sass_settings.css_dir),
+                dirname=(self.sass_in, self.sass_out),
                 output_style=self.sass_settings.output_style,
             )
 
@@ -155,12 +170,12 @@ class Site:
         output_filename.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(filename, output_filename)
 
-    def make(self):
+    def build(self):
         for file_ in self.files_to_copy:
             self.copy_file(file_)
-        for page in self.pages.values():
+        for page in self.pages:
             self._render_page(page)
-        self._compile_sass()
+        self.compile_sass()
 
     def clean(self):
         delete_directory_contents(self.output_dir)
