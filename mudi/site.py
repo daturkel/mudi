@@ -98,7 +98,7 @@ class Site:
     @property
     def sass_in(self) -> Optional[Path]:
         if self.settings.sass is not None:
-            return self.content_dir / self.settings.sass.sass_in
+            return self.input_dir / self.settings.sass.sass_in
         else:
             return None
 
@@ -165,10 +165,10 @@ class Site:
             f.write(output)
 
     def compile_sass(self):
-        if self.sass_settings is not None:
+        if self.settings.sass is not None:
             sass.compile(
                 dirname=(self.sass_in, self.sass_out),
-                output_style=self.sass_settings.output_style,
+                output_style=self.settings.sass.output_style,
             )
 
     def copy_file(self, filename: Path):

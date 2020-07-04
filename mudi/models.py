@@ -29,7 +29,7 @@ class SassSettings(BaseModel):
 
 
 class SiteSettings(BaseModel):
-    input_dir: Path = Path("input")
+    input_dir: Path = Path("src")
     output_dir: Path = Path("dist")
     template_dir: Path = Path("templates")
     content_dir: Path = Path("content")
