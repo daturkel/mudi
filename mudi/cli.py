@@ -8,6 +8,25 @@ from .mudi_settings import MudiSettings
 from .site import Site
 
 
+# Reusable click.option decorators
+def settings_file(function):
+    function = click.option(
+        "--settings_file",
+        "-s",
+        default="settings.toml",
+        type=click.Path(),
+        show_default=True,
+        help="Path of mudi settings file.",
+    )(function)
+    return function
+
+
+def output_dir(function):
+    function = click.option("--output_dir", "-o", type=click.Path())(function)
+    return function
+
+
+# CLI definition
 @click.group()
 @click.pass_context
 def cli(ctx):
@@ -21,16 +40,11 @@ def version():
 
 
 @cli.command()
-@click.option(
-    "--settings_file",
-    "-s",
-    default="settings.toml",
-    type=click.Path(),
-    show_default=True,
-)
-@click.option("--output_dir", "-o", type=click.Path())
+@settings_file
+@output_dir
 @click.pass_context
 def clean(ctx, settings_file: click.Path, output_dir: Optional[click.Path]):
+    """Delete contents of the mudi output directory."""
     ctx.ensure_object(dict)
     ctx.obj["settings_file"] = Path(str(settings_file))
     ctx.obj["output_dir"] = Path(str(output_dir))
@@ -42,19 +56,14 @@ def clean(ctx, settings_file: click.Path, output_dir: Optional[click.Path]):
 
 
 @cli.command()
-@click.option(
-    "--settings_file",
-    "-s",
-    default="settings.toml",
-    type=click.Path(),
-    show_default=True,
-)
-@click.option("--output_dir", "-o", type=click.Path())
-@click.option("--clean", "-c", is_flag=True)
+@settings_file
+@output_dir
+@click.option("--clean", "-c", is_flag=True, help="Run `clean` before building.")
 @click.pass_context
 def build(
     ctx, settings_file: click.Path, output_dir: Optional[click.Path], clean: bool
 ):
+    """Build website and save to the output directory."""
     ctx.ensure_object(dict)
     ctx.obj["settings_file"] = Path(str(settings_file))
     ctx.obj["output_dir"] = Path(str(output_dir))
