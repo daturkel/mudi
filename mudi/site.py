@@ -9,8 +9,9 @@ from typing import DefaultDict, Dict, List, Optional, Union
 from .collection import Collection
 from .loaders import load_html_file, load_md_file
 from .models import Feeds, SassSettings, SiteSettings
+from .mudi_settings import MudiSettings
 from .page import Page
-from .utils import path_swap, rel_name
+from .utils import delete_directory_contents, path_swap, rel_name
 
 
 class Site:
@@ -19,6 +20,7 @@ class Site:
         site_settings: SiteSettings,
         ctx: Optional[dict] = None,
         feeds: Optional[Feeds] = None,
+        fully_initialize: bool = True,
     ):
 
         self.settings = site_settings
@@ -30,21 +32,52 @@ class Site:
         self.pages: Dict[str, Page] = {}
         self.collections: DefaultDict[str, List[Page]] = defaultdict(list)
 
-        self.env = Environment(
-            # cast template_dir to str to satisfy mypy on python versions <3.7
-            # https://github.com/python/typeshed/blob/master/third_party/2and3/jinja2/loaders.pyi#L7-L12
-            loader=FileSystemLoader(str(self.template_dir)),
-            trim_blocks=True,
-            lstrip_blocks=True,
-        )
-        self.env.globals = {
-            "site": {"ctx": self.ctx, "settings": self.settings},
-            "collections": self.collections,
-            "feeds": self.feeds,
-            "pages": self.pages,
-        }
+        self.env: Environment
 
-        self._parse_tree()
+        self.fully_initialized = False
+        if fully_initialize:
+            self._fully_initialize()
+
+    def _fully_initialize(self):
+        if not self.fully_initialized:
+            self.env = Environment(
+                # cast template_dir to str to satisfy mypy on python versions <3.7
+                # https://github.com/python/typeshed/blob/master/third_party/2and3/jinja2/loaders.pyi#L7-L12
+                loader=FileSystemLoader(str(self.template_dir)),
+                trim_blocks=True,
+                lstrip_blocks=True,
+            )
+            self.env.globals = {
+                "site": {"ctx": self.ctx, "settings": self.settings},
+                "collections": self.collections,
+                "feeds": self.feeds,
+                "pages": self.pages,
+            }
+
+            self._parse_tree()
+
+            self.fully_initialized = True
+
+    @classmethod
+    def from_mudi_settings(
+        cls, mudi_settings: MudiSettings, fully_initialize: bool = True,
+    ):
+        return cls(
+            site_settings=mudi_settings.site_settings,
+            ctx=mudi_settings.site_ctx,
+            feeds=mudi_settings.feeds,
+            fully_initialize=fully_initialize,
+        )
+
+    @classmethod
+    def from_settings_file(
+        cls,
+        settings_file: Path,
+        output_dir: Optional[Path] = None,
+        fully_initialize: bool = True,
+    ):
+        mudi_settings = MudiSettings(settings_file, output_dir)
+        return cls.from_mudi_settings(mudi_settings, fully_initialize)
 
     @property
     def template_dir(self) -> Path:
@@ -128,3 +161,6 @@ class Site:
         for page in self.pages.values():
             self._render_page(page)
         self._compile_sass()
+
+    def clean(self):
+        delete_directory_contents(self.output_dir)
