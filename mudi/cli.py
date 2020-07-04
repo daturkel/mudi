@@ -4,6 +4,7 @@ import shutil
 from typing import Any, Callable, Dict, Optional
 
 from . import __version__
+from .logger import setup_logger
 from .mudi_settings import MudiSettings
 from .site import Site
 
@@ -49,6 +50,7 @@ def output_dir(help_text: str = "Where mudi saves its output."):
 @click.group()
 @click.pass_context
 def cli(ctx):
+    setup_logger()
     ctx.ensure_object(dict)
 
 
@@ -84,9 +86,7 @@ def build(
     ctx.ensure_object(dict)
     ctx.obj = populate_context(settings_file, output_dir)
 
-    site = Site.from_settings_file(
-        ctx.obj["settings_file"], ctx.obj["output_dir"], fully_initialize=False
-    )
+    site = Site.from_settings_file(ctx.obj["settings_file"], ctx.obj["output_dir"])
     if clean:
         site.clean()
     site.build()
