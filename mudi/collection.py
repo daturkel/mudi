@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Any, List, Optional, Tuple
 
 from .page import Page
@@ -12,7 +10,7 @@ class Collection:
 
     def sorted_by(
         self, keys: List[Tuple[str, bool, Any]], name: Optional[str] = None
-    ) -> Collection:
+    ) -> "Collection":
         if not len(self.pages):
             return Collection(name=name or self.name, pages=self.pages)
         sorted_pages = self.pages
