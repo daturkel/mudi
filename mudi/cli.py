@@ -3,8 +3,8 @@ from pathlib import Path
 import shutil
 from typing import Optional
 
-from .mudi_environment import MudiEnvironment
-from .utils import delete_directory_contents
+from .mudi_settings import MudiSettings
+from .site import Site
 
 
 @click.group()
@@ -17,15 +17,16 @@ from .utils import delete_directory_contents
 )
 @click.pass_context
 @click.option("--output_dir", "-o", type=click.Path())
-def cli(ctx, config_file: click.Path, output_dir: Optional[click.Path]):
+def cli(ctx, settings_file: click.Path, output_dir: Optional[click.Path]):
     ctx.ensure_object(dict)
-    config_file_ = Path(str(config_file))
-    output_dir_ = Path(str(output_dir))
-    ctx.obj["mudi_environment"] = MudiEnvironment(config_file_, output_dir_)
+    ctx.obj["settings_file"] = Path(str(settings_file))
+    ctx.obj["output_dir"] = Path(str(output_dir))
 
 
 @cli.command()
 @click.pass_context
 def clean(ctx):
-    mudi_environment: MudiEnvironment = ctx["mudi_environment"]
-    mudi_environment.clean()
+    site = Site.from_settings_file(
+        ctx.obj["settings_file"], ctx["output_dir"], fully_initialize=False
+    )
+    site.clean()
