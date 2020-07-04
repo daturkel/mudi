@@ -92,16 +92,22 @@ class Site:
         return self.settings.input_dir / self.settings.content_dir
 
     @property
-    def sass_in(self) -> Path:
-        return self.content_dir / self.settings.sass.sass_in
-
-    @property
-    def sass_out(self) -> Path:
-        return self.output_dir / self.settings.sass.sass_out
-
-    @property
     def output_dir(self) -> Path:
         return self.settings.output_dir
+
+    @property
+    def sass_in(self) -> Optional[Path]:
+        if self.settings.sass is not None:
+            return self.content_dir / self.settings.sass.sass_in
+        else:
+            return None
+
+    @property
+    def sass_out(self) -> Optional[Path]:
+        if self.settings.sass is not None:
+            return self.output_dir / self.settings.sass.sass_out
+        else:
+            return None
 
     def is_sass_file(self, filename: Path) -> bool:
         if self.settings.sass is None:
@@ -109,7 +115,7 @@ class Site:
         else:
             return (
                 filename.suffix in [".sass", ".scss"]
-                and self.settings.sass.sass_dir in filename.parents
+                and self.sass_in in filename.parents
             )
 
     def _parse_tree(self):
