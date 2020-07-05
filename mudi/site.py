@@ -8,6 +8,7 @@ from markdown.extensions.footnotes import FootnoteExtension
 from markdown.extensions.smarty import SmartyExtension
 from markdown.extensions.toc import TocExtension
 from markdown_checklist.extension import ChecklistExtension
+from mdx_truly_sane_lists.mdx_truly_sane_lists import TrulySaneListExtension
 from pathlib import Path
 import sass
 import shutil
@@ -72,6 +73,7 @@ class Site:
                     FencedCodeExtension(),
                     SmartyExtension(),
                     TocExtension(anchorlink=True),
+                    TrulySaneListExtension(),
                 ]
             )
 
