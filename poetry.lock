@@ -76,7 +76,7 @@ python-versions = "*"
 version = "0.6"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Read metadata from Python packages"
 marker = "python_version < \"3.8\""
 name = "importlib-metadata"
@@ -118,20 +118,34 @@ six = "*"
 
 [[package]]
 category = "main"
-description = "A markdown parser with high extensibility."
-name = "marko"
+description = "Python implementation of Markdown."
+name = "markdown"
 optional = false
-python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*"
-version = "0.8.2"
+python-versions = ">=3.5"
+version = "3.2.2"
 
 [package.dependencies]
-[package.dependencies.pygments]
-optional = true
+[package.dependencies.importlib-metadata]
+python = "<3.8"
 version = "*"
 
 [package.extras]
-codehilite = ["pygments"]
-toc = ["python-slugify"]
+testing = ["coverage", "pyyaml"]
+
+[[package]]
+category = "main"
+description = "Python Markdown extension for task lists with checkboxes"
+name = "markdown-checklist"
+optional = false
+python-versions = "*"
+version = "0.4.3"
+
+[package.dependencies]
+markdown = "*"
+
+[package.extras]
+coverage = ["figleaf", "coverage"]
+testing = ["pytest"]
 
 [[package]]
 category = "main"
@@ -346,7 +360,7 @@ python-versions = "*"
 version = "0.2.5"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Backport of pathlib-compatible object wrapper for zip files"
 marker = "python_version < \"3.8\""
 name = "zipp"
@@ -359,7 +373,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "7c4557a2bdcfd5af73c3ee62fec0547ee95c376379a28145391e288cd484e536"
+content-hash = "1977801a67f50dfe99a51e0e29a7fcb2ceec2de83486813ded477b5c7a6f1a59"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -414,9 +428,12 @@ libsass = [
     {file = "libsass-0.20.0-cp38-cp38-win_amd64.whl", hash = "sha256:5c8ff562b233734fbc72b23bb862cc6a6f70b1e9bf85a58422aa75108b94783b"},
     {file = "libsass-0.20.0.tar.gz", hash = "sha256:b7452f1df274b166dc22ee2e9154c4adca619bcbbdf8041a7aa05f372a1dacbc"},
 ]
-marko = [
-    {file = "marko-0.8.2-py2.py3-none-any.whl", hash = "sha256:4a465cb0d0387460f030eaaedeab592d5349456840556950994be2428f9d0fed"},
-    {file = "marko-0.8.2.tar.gz", hash = "sha256:ea29e83f08999480ec655658d82e8a52d2d0dfaba3a5c46ca6dd2c9f0000fe40"},
+markdown = [
+    {file = "Markdown-3.2.2-py3-none-any.whl", hash = "sha256:c467cd6233885534bf0fe96e62e3cf46cfc1605112356c4f9981512b8174de59"},
+    {file = "Markdown-3.2.2.tar.gz", hash = "sha256:1fafe3f1ecabfb514a5285fca634a53c1b32a81cb0feb154264d55bf2ff22c17"},
+]
+markdown-checklist = [
+    {file = "markdown-checklist-0.4.3.tar.gz", hash = "sha256:4e9e76bfe72e2d1bb8e12c9599b3d23305662b356623d48b52caf351fff3d93f"},
 ]
 markupsafe = [
     {file = "MarkupSafe-1.1.1-cp27-cp27m-macosx_10_6_intel.whl", hash = "sha256:09027a7803a62ca78792ad89403b1b7a73a01c8cb65909cd876f7fcebd79b161"},

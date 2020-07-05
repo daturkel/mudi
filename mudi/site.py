@@ -1,8 +1,13 @@
 from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 import logging
-import marko
-from marko.ext.codehilite import CodeHilite
+import markdown
+from markdown.extensions.codehilite import CodeHiliteExtension
+from markdown.extensions.fenced_code import FencedCodeExtension
+from markdown.extensions.footnotes import FootnoteExtension
+from markdown.extensions.smarty import SmartyExtension
+from markdown.extensions.toc import TocExtension
+from markdown_checklist.extension import ChecklistExtension
 from pathlib import Path
 import sass
 import shutil
@@ -60,8 +65,15 @@ class Site:
 
             self._parse_tree()
 
-            self.md = marko.Markdown(extensions=["footnote"])
-            self.md.use(CodeHilite(style="monokai"))
+            self.md = markdown.Markdown(
+                extensions=[
+                    ChecklistExtension(),
+                    CodeHiliteExtension(css_class="highlight", guess_lang=False),
+                    FencedCodeExtension(),
+                    SmartyExtension(),
+                    TocExtension(),
+                ]
+            )
 
             self.fully_initialized = True
 
