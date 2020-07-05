@@ -72,7 +72,7 @@ class Site:
                     CodeHiliteExtension(css_class="highlight", guess_lang=False),
                     FencedCodeExtension(),
                     SmartyExtension(),
-                    TocExtension(),
+                    TocExtension(anchorlink=True),
                     TrulySaneListExtension(),
                 ]
             )
@@ -187,7 +187,7 @@ class Site:
             content = page.content
 
         if page.content_format == "md":
-            content = self.md.convert(content).rstrip()
+            content = self.md.reset().convert(content).rstrip()
 
         template = self.env.get_template(
             page.template or self.settings.default_template
