@@ -71,10 +71,13 @@ class Site:
                     ChecklistExtension(),
                     CodeHiliteExtension(css_class="highlight", guess_lang=False),
                     FencedCodeExtension(),
+                    FootnoteExtension(BACKLINK_TEXT="&#x2191;"),
                     SmartyExtension(),
                     TocExtension(anchorlink=True),
                     TrulySaneListExtension(),
-                ]
+                ],
+                output_format="html5",
+                tab_length=2,
             )
 
             self.fully_initialized = True
