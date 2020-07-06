@@ -12,6 +12,7 @@ from mdx_truly_sane_lists.mdx_truly_sane_lists import TrulySaneListExtension
 from pathlib import Path
 import sass
 import shutil
+import time
 import toml
 from typing import DefaultDict, Dict, List, Optional, Union
 
@@ -21,7 +22,7 @@ from .loaders import load_html_file, load_md_file
 from .models import Feeds, SassSettings, SiteSettings
 from .mudi_settings import MudiSettings
 from .page import Page
-from .utils import delete_directory_contents, path_swap, rel_name
+from .utils import delete_directory_contents, path_swap, rel_name, tictoc
 
 
 class Site:
@@ -101,6 +102,7 @@ class Site:
         fully_initialize: bool = True,
     ):
         mudi_settings = MudiSettings(settings_file, output_dir)
+        logging.info(f"loaded settings from {settings_file}")
         return cls.from_mudi_settings(mudi_settings, fully_initialize)
 
     @property
@@ -154,7 +156,7 @@ class Site:
             if Path(filename).suffix == ".md":
                 content, metadata = load_md_file(filename)
                 page = Page(name=name, content=content, metadata=metadata,)
-                logging.info(f"Registering {filename} as page {page.name}")
+                logging.debug(f"{filename} → page '{page.name}'")
                 self._register_page(page)
             elif Path(filename).suffix == ".html":
                 # TODO: handle name collisions
@@ -162,13 +164,13 @@ class Site:
                 page = Page(
                     name=name, content=content, metadata=metadata, content_format="html"
                 )
-                logging.info(f"Registering {filename} as page {page.name}")
+                logging.debug(f"{filename} → page '{page.name}'")
                 self._register_page(page)
             elif self.is_sass_file(Path(filename)):
-                logging.info(f"Found sass file {filename}")
+                logging.debug(f"found sass file {filename}")
                 continue
             elif Path(filename).is_file():
-                logging.info(f"Will copy file {filename}")
+                logging.debug(f"{filename} → files to copy")
                 self.files_to_copy.append(filename)
 
         self.env.globals["pages"] = self.pages
@@ -184,31 +186,38 @@ class Site:
             page = self.pages[page]
 
         if page.has_jinja:
+            logging.debug(f"{page.name}: rendering inner jinja")
             content_template = self.env.from_string(page.content)
             content = content_template.render(page=page)
         else:
             content = page.content
 
         if page.content_format == "md":
+            logging.debug(f"{page.name}: converting markdown")
             content = self.md.reset().convert(content).rstrip()
 
+        logging.debug(f"{page.name}: rendering jinja")
         template = self.env.get_template(
             page.template or self.settings.default_template
         )
         output = template.render(content=content, page=page)
+
         output_filename = self.settings.output_dir / Path(page.name).with_suffix(
             ".html"
         )
         output_filename.parent.mkdir(parents=True, exist_ok=True)
         with open(output_filename, "w") as f:
             f.write(output)
+        logging.info(f"wrote {page.name} to {output_filename}")
 
     def render_all_pages(self):
+        logging.info("rendering...")
         for page in self.pages:
             self.render_page(page)
 
     def compile_sass(self):
         if self.settings.sass is not None:
+            logging.info("compiling sass...")
             sass.compile(
                 dirname=(self.sass_in, self.sass_out),
                 output_style=self.settings.sass.output_style,
@@ -220,14 +229,18 @@ class Site:
         shutil.copy(filename, output_filename)
 
     def copy_all_files(self):
+        logging.info("copying files...")
         for file_ in self.files_to_copy:
             self.copy_file(file_)
 
     def build(self):
+        tic = time.perf_counter()
         if self.fully_initialized:
-            self.copy_all_files()
             self.render_all_pages()
             self.compile_sass()
+            self.copy_all_files()
+            toc = time.perf_counter()
+            logging.info(f"done in {tictoc(tic,toc)}s!")
         else:
             raise NotInitializedError(
                 "Site must be fully initialized before building. Run _fully_initialize."

@@ -17,3 +17,7 @@ def delete_directory_contents(dir_path: Path):
             child.unlink()
         else:
             shutil.rmtree(child)
+
+
+def tictoc(tic: float, toc: float) -> float:
+    return round(toc - tic, 2)
