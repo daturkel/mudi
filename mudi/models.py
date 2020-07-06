@@ -21,7 +21,7 @@ class SassSettings(BaseModel):
 
     @validator("output_style")
     def valid_output_style(cls, v):
-        if v not in ["nested", "expanded", "compact", "compresed"]:
+        if v not in ["nested", "expanded", "compact", "compressed"]:
             raise ValueError(
                 "must be one of 'nested', 'expanded', 'compact', 'compressed'"
             )
