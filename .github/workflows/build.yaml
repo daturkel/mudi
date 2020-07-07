@@ -24,17 +24,18 @@ jobs:
         uses: dschep/install-poetry-action@v1.3
         with:
           version: 1.0.9
-          create_virtualenvs: true
+      - name: Set Poetry config
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project false
+          poetry config virtualenvs.path ~/.virtualenvs
       - name: Cache
         id: cache
         uses: actions/cache@v2.0.0
         with:
           path: ~/.virtualenvs
           key: poetry-venv-${{ hashFiles('poetry.lock') }}
-      - name: Set Poetry config
-        run: |
-          poetry config virtualenvs.in-project false
-          poetry config virtualenvs.path ~/.virtualenvs
+
       - name: Install Dependencies via Poetry
         run: poetry install
         if: steps.cache.outputs.cache-hit != 'true'
