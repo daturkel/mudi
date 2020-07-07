@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, Optional
 from . import __version__
 from .logger import setup_logger
 from .mudi_settings import MudiSettings
+from .server import serve as serve_directory
 from .site import Site
 
 
@@ -90,3 +91,18 @@ def build(
     if clean:
         site.clean()
     site.build()
+
+
+@cli.command()
+@settings_file
+@output_dir()
+@click.option(
+    "--port", "-p", type=int, default=8080, help="Port to serve directory from."
+)
+@click.pass_context
+def serve(ctx, settings_file: click.Path, output_dir: Optional[click.Path], port: int):
+    """Locally serve your site from its output_dir."""
+    ctx.ensure_object(dict)
+    ctx.obj = populate_context(settings_file, output_dir)
+    settings = MudiSettings(ctx.obj["settings_file"], ctx.obj["output_dir"])
+    serve_directory(settings.site_settings.output_dir, port)
