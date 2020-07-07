@@ -2,7 +2,6 @@ import click
 from pathlib import Path
 import shutil
 from typing import Any, Callable, Dict, Optional
-import webbrowser
 
 from . import __version__
 from .logger import setup_logger
