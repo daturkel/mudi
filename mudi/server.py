@@ -48,7 +48,7 @@ def serve(
     with ServerClass(serve_dir, server_address, HandlerClass) as httpd:
         socket_address = httpd.socket.getsockname()
         logging.info(
-            f"Serving http from {serve_dir} on {socket_address[0]} port {socket_address[1]}..."
+            f"Serving http from {serve_dir} at http://{socket_address[0]}:{socket_address[1]}"
         )
         try:
             httpd.serve_forever()
