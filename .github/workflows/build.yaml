@@ -38,7 +38,7 @@ jobs:
 
       - name: Install Dependencies via Poetry
         run: poetry install
-        if: steps.cache.outputs.cache-hit != 'true'
+        #if: steps.cache.outputs.cache-hit != 'true'
       - name: Run mypy
         run: poetry run mypy .
       - name: Run black
