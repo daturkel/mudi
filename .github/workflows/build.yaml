@@ -31,6 +31,10 @@ jobs:
         with:
           path: ~/.virtualenvs
           key: poetry-venv-${{ hashFiles('poetry.lock') }}
+      - name: Set Poetry config
+        run: |
+          poetry config settings.virtualenvs.in-project false
+          poetry config settings.virtualenvs.path ~/.virtualenvs
       - name: Install Dependencies via Poetry
         run: poetry install
         if: steps.cache.outputs.cache-hit != 'true'
