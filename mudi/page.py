@@ -69,3 +69,9 @@ class Page:
 
         """
         return getattr(self, key, self.ctx.get(key, default))
+
+    def __getattr__(self, key):
+        try:
+            return self.ctx[key]
+        except KeyError as e:
+            raise AttributeError(e)

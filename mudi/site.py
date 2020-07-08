@@ -48,6 +48,12 @@ class Site:
         if fully_initialize:
             self._fully_initialize()
 
+    def __getattr__(self, key):
+        try:
+            return self.ctx[key]
+        except KeyError as e:
+            raise AttributeError(e)
+
     def _fully_initialize(self):
         if not self.fully_initialized:
             self.env = Environment(
@@ -58,7 +64,7 @@ class Site:
                 lstrip_blocks=True,
             )
             self.env.globals = {
-                "site": {"ctx": self.ctx, "settings": self.settings},
+                "site": self,
                 "collections": self.collections,
                 "feeds": self.feeds,
                 "pages": self.pages,
