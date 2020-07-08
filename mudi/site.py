@@ -1,4 +1,3 @@
-from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 import logging
 import markdown
@@ -14,7 +13,7 @@ import sass
 import shutil
 import time
 import toml
-from typing import DefaultDict, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from .collection import Collection
 from .exceptions import NotInitializedError
@@ -41,7 +40,7 @@ class Site:
         self.files: List[Path] = []
         self.files_to_copy: List[Path] = []
         self.pages: Dict[str, Page] = {}
-        self.collections: DefaultDict[str, List[Page]] = defaultdict(list)
+        self.collections: Dict[str, Collection] = dict()
 
         self.env: Environment
 
@@ -178,7 +177,11 @@ class Site:
     def _register_page(self, page: Page):
         self.pages[page.name] = page
         for collection in page.collections:
-            self.collections[collection].append(page)
+            if collection in self.collections:
+                self.collections[collection].append(page)
+            else:
+                col = Collection(collection, [page])
+                self.collections[collection] = col
             self.env.globals["collections"] = self.collections
 
     def render_page(self, page: Union[Page, str]):
