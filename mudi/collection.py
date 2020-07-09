@@ -4,9 +4,30 @@ from .page import Page
 
 
 class Collection:
-    def __init__(self, name: str, pages: Optional[List[Page]] = None):
+    def __init__(
+        self,
+        name: str,
+        pages: Optional[List[Page]] = None,
+        sort_key: Optional[str] = None,
+        sort_descending: Optional[bool] = None,
+        sort_default: Optional[Any] = None,
+    ):
         self.name = name
-        self.pages: List[Page] = pages or []
+        self._pages: List[Page] = pages or []
+        self.sorted = sort_key is not None
+        self.sort_key = sort_key
+        self.sort_descending = sort_descending
+        self.sort_default = sort_default
+
+    @property
+    def pages(self):
+        # TODO: figure out a way to cache this intelligently
+        if self.sorted:
+            return self._sorted_by(
+                self.sort_key, self.sort_descending, self.sort_default
+            )
+        else:
+            return self._pages
 
     def __iter__(self):
         self._iter_index = -1
@@ -29,17 +50,38 @@ class Collection:
     def append(self, page: Page):
         self.pages.append(page)
 
-    def sorted_by(
-        self,
-        key: str,
-        descending: bool = True,
-        default: Any = None,
-        name: Optional[str] = None,
-    ) -> "Collection":
-        new_name = self.name if name is None else name
-        if not len(self.pages):
-            return Collection(name=new_name, pages=self.pages)
+    def _sorted_by(self, key: str, descending: bool = True, default: Any = None):
+        if not len(self._pages):
+            return self._pages
         sorted_pages = sorted(
             self.pages, key=lambda x: x.get(key, default), reverse=descending
         )
-        return Collection(name=new_name, pages=sorted_pages)
+        return sorted_pages
+
+    def sorted_by(
+        self, key: str, descending: bool = True, default: Any = None,
+    ) -> "Collection":
+        if not len(self._pages):
+            return self
+        sorted_pages = self._sorted_by(key, descending, default)
+        return Collection(name=self.name, pages=sorted_pages)
+
+    def page(self, key: str) -> Page:
+        if key not in self:
+            raise KeyError(f"Collection has no page named {key}")
+        else:
+            page = list(filter(lambda p: p.name == key, self.pages))[0]
+        this_index = self.pages.index(page)
+        next_index = this_index + 1
+        prev_index = this_index - 1
+        if next_index < len(self.pages):
+            next_ = self.pages[next_index]
+        else:
+            next_ = None
+        if prev_index >= 0:
+            prev = self.pages[prev_index]
+        else:
+            prev = None
+        page.next = next_
+        page.previous = prev
+        return page
