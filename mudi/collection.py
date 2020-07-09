@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import Any, List, Optional, Tuple
 
 from .page import Page
