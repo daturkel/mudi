@@ -21,7 +21,7 @@ from .loaders import load_html_file, load_md_file
 from .models import Feeds, SassSettings, SiteSettings
 from .mudi_settings import MudiSettings
 from .page import Page
-from .utils import delete_directory_contents, path_swap, rel_name, tictoc
+from .utils import delete_directory_contents, rel_name, tictoc
 
 
 class Site:
@@ -56,19 +56,7 @@ class Site:
 
     def _fully_initialize(self):
         if not self.fully_initialized:
-            self.env = Environment(
-                # cast template_dir to str to satisfy mypy on python versions <3.7
-                # https://github.com/python/typeshed/blob/master/third_party/2and3/jinja2/loaders.pyi#L7-L12
-                loader=FileSystemLoader(str(self.template_dir)),
-                trim_blocks=True,
-                lstrip_blocks=True,
-            )
-            self.env.globals = {
-                "site": self,
-                "collections": self.collections,
-                "feeds": self.feeds,
-                "pages": self.pages,
-            }
+            self._get_jinja_env()
 
             self._parse_tree()
 
@@ -87,6 +75,21 @@ class Site:
             )
 
             self.fully_initialized = True
+
+    def _get_jinja_env(self):
+        self.env = Environment(
+            # cast template_dir to str to satisfy mypy on python versions <3.7
+            # https://github.com/python/typeshed/blob/master/third_party/2and3/jinja2/loaders.pyi#L7-L12
+            loader=FileSystemLoader(str(self.template_dir)),
+            trim_blocks=True,
+            lstrip_blocks=True,
+        )
+        self.env.globals = {
+            "site": self,
+            "collections": self.collections,
+            "feeds": self.feeds,
+            "pages": self.pages,
+        }
 
     @classmethod
     def from_mudi_settings(
@@ -153,34 +156,23 @@ class Site:
         self.files = [
             filename
             for filename in Path(self.content_dir).glob("**/*")
-            if str(rel_name(filename, rel_path=self.content_dir))[0] != "."
+            if self._path_to_name(filename)[0] != "."
         ]
 
         for filename in self.files:
-            name = str(rel_name(filename, rel_path=self.content_dir))
             if Path(filename).suffix == ".md":
-                content, metadata = load_md_file(filename)
-                page = Page(name=name, content=content, metadata=metadata,)
-                logging.debug(f"{filename} → page '{page.name}'")
-                self._register_page(page)
+                self.add_page_from_file(filename)
             elif Path(filename).suffix == ".html":
                 # TODO: handle name collisions
-                content, metadata = load_html_file(filename)
-                page = Page(
-                    name=name, content=content, metadata=metadata, content_format="html"
-                )
-                logging.debug(f"{filename} → page '{page.name}'")
-                self._register_page(page)
+                self.add_page_from_file(page)
             elif self.is_sass_file(Path(filename)):
                 logging.debug(f"found sass file {filename}")
                 continue
             elif Path(filename).is_file():
                 logging.debug(f"{filename} → files to copy")
-                self.files_to_copy.append(filename)
+                self.files_to_copy.append(rel_name(filename, self.content_dir))
 
-        self.env.globals["pages"] = self.pages
-
-    def _register_page(self, page: Page):
+    def add_page(self, page: Page):
         self.pages[page.name] = page
         for collection in page.collections:
             if collection in self.collections:
@@ -189,6 +181,33 @@ class Site:
                 col = Collection(collection, [page])
                 self.collections[collection] = col
             self.env.globals["collections"] = self.collections
+        self.env.globals["pages"] = self.pages
+
+    def add_page_from_file(self, filename: Path):
+        name = self._path_to_name(filename)
+        if filename.suffix == ".md":
+            content, metadata = load_md_file(filename)
+            page = Page(name=name, content=content, metadata=metadata,)
+        elif filename.suffix == ".html":
+            content, metadata = load_html_file(filename)
+            page = Page(
+                name=name, content=content, metadata=metadata, content_format="html"
+            )
+        logging.debug(f"{filename} → page '{page.name}'")
+        self.add_page(page)
+
+    def remove_page(self, page: Page):
+        for collection in page.collections:
+            self.collections[collection].remove(page)
+        del self.pages[page.name]
+        self.delete_file(page.name + ".html")
+        self.env.globals["collections"] = self.collections
+        self.env.globals["pages"] = self.pages
+
+    def remove_page_from_file(self, filename: Path):
+        name = self._path_to_name(filename)
+        page = self.pages[name]
+        self.remove_page(page)
 
     def render_page(self, page: Union[Page, str]):
         if isinstance(page, str):
@@ -233,14 +252,20 @@ class Site:
             )
 
     def copy_file(self, filename: Path):
-        output_filename = path_swap(filename, self.content_dir, self.output_dir)
+        input_filename = self.content_dir / filename
+        output_filename = self.output_dir / filename
         output_filename.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(filename, output_filename)
+        shutil.copy(input_filename, output_filename)
 
     def copy_all_files(self):
         logging.info("copying files...")
         for file_ in self.files_to_copy:
             self.copy_file(file_)
+
+    def delete_file(self, filename: Path):
+        logging.info(f"deleting file {filename}")
+        output_filename = self.output_dir / filename
+        output_filename.unlink()
 
     def build(self):
         tic = time.perf_counter()
@@ -257,3 +282,6 @@ class Site:
 
     def clean(self):
         delete_directory_contents(self.output_dir)
+
+    def _path_to_name(self, filename: Path) -> str:
+        return str(rel_name(filename, rel_path=self.content_dir))

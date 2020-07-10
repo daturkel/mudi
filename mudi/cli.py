@@ -1,9 +1,12 @@
 import click
+import logging
 from pathlib import Path
 import shutil
 from typing import Any, Callable, Dict, Optional
+import watchgod
 
 from . import __version__
+from .dispatcher import MudiDispatcher
 from .logger import setup_logger
 from .mudi_settings import MudiSettings
 from .server import serve as serve_directory
@@ -106,3 +109,23 @@ def serve(ctx, settings_file: click.Path, output_dir: Optional[click.Path], port
     ctx.obj = populate_context(settings_file, output_dir)
     settings = MudiSettings(ctx.obj["settings_file"], ctx.obj["output_dir"])
     serve_directory(settings.site_settings.output_dir, port)
+
+
+@cli.command()
+@settings_file
+@output_dir()
+@click.option(
+    "--clean", "-c", is_flag=True, help="Run `clean` and `build` before watching."
+)
+@click.pass_context
+def watch(
+    ctx, settings_file: click.Path, output_dir: Optional[click.Path], clean: bool
+):
+    """Watch input_dir and rebuild when changes are detected."""
+    ctx.ensure_object(dict)
+    ctx.obj = populate_context(settings_file, output_dir)
+    site = Site.from_settings_file(ctx.obj["settings_file"], ctx.obj["output_dir"])
+    dispatcher = MudiDispatcher(site)
+    if clean:
+        site.clean()
+    dispatcher.watch()

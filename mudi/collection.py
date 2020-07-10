@@ -50,6 +50,9 @@ class Collection:
     def append(self, page: Page):
         self.pages.append(page)
 
+    def remove(self, page: Page):
+        self.pages.remove(page)
+
     def _sorted_by(self, key: str, descending: bool = True, default: Any = None):
         if not len(self._pages):
             return self._pages
