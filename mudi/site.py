@@ -200,7 +200,7 @@ class Site:
         for collection in page.collections:
             self.collections[collection].remove(page)
         del self.pages[page.name]
-        self.delete_file(page.name + ".html")
+        self.delete_file(Path(page.name + ".html"))
         self.env.globals["collections"] = self.collections
         self.env.globals["pages"] = self.pages
 
