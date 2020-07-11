@@ -1,13 +1,5 @@
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 import logging
-import markdown
-from markdown.extensions.codehilite import CodeHiliteExtension
-from markdown.extensions.fenced_code import FencedCodeExtension
-from markdown.extensions.footnotes import FootnoteExtension
-from markdown.extensions.smarty import SmartyExtension
-from markdown.extensions.toc import TocExtension
-from markdown_checklist.extension import ChecklistExtension
-from mdx_truly_sane_lists.mdx_truly_sane_lists import TrulySaneListExtension
 from pathlib import Path
 import sass
 import shutil
@@ -18,7 +10,8 @@ from typing import Dict, List, Optional, Union
 from .collection import Collection
 from .exceptions import NotInitializedError
 from .loaders import load_html_file, load_md_file
-from .models import Feeds, SassSettings, SiteSettings
+from .markdown import MarkdownRenderer
+from .models import Feeds, MarkdownSettings, SassSettings, SiteSettings
 from .mudi_settings import MudiSettings
 from .page import Page
 from .utils import delete_directory_contents, rel_name, tictoc
@@ -60,19 +53,7 @@ class Site:
 
             self._parse_tree()
 
-            self.md = markdown.Markdown(
-                extensions=[
-                    ChecklistExtension(),
-                    CodeHiliteExtension(css_class="highlight", guess_lang=False),
-                    FencedCodeExtension(),
-                    FootnoteExtension(BACKLINK_TEXT="&#x2191;"),
-                    SmartyExtension(),
-                    TocExtension(anchorlink=True),
-                    TrulySaneListExtension(),
-                ],
-                output_format="html5",
-                tab_length=2,
-            )
+            self.md = MarkdownRenderer(self.settings.markdown)
 
             self.fully_initialized = True
 
@@ -222,7 +203,13 @@ class Site:
 
         if page.content_format == "md":
             logging.debug(f"{page.name}: converting markdown")
-            content = self.md.reset().convert(content).rstrip()
+            if page.markdown is not None:
+                markdown_settings = self.settings.markdown.dict()
+                markdown_settings.update(page.markdown)
+                md = MarkdownRenderer(MarkdownSettings(**markdown_settings))
+            else:
+                md = self.md
+            content = md.reset().convert(content).rstrip()
 
         logging.debug(f"{page.name}: rendering jinja")
         template = self.env.get_template(
@@ -281,6 +268,7 @@ class Site:
             )
 
     def clean(self):
+        logging.info(f"Emptying {self.output_dir}")
         delete_directory_contents(self.output_dir)
 
     def _path_to_name(self, filename: Path) -> str:
