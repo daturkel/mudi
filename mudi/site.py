@@ -11,7 +11,13 @@ from .collection import Collection
 from .exceptions import NotInitializedError
 from .loaders import load_html_file, load_md_file
 from .markdown import MarkdownRenderer
-from .models import Feeds, MarkdownSettings, SassSettings, SiteSettings
+from .models import (
+    CollectionSettings,
+    Feeds,
+    MarkdownSettings,
+    SassSettings,
+    SiteSettings,
+)
 from .mudi_settings import MudiSettings
 from .page import Page
 from .utils import delete_directory_contents, rel_name, tictoc
@@ -22,11 +28,15 @@ class Site:
         self,
         site_settings: SiteSettings,
         ctx: Optional[dict] = None,
+        collection_settings: Optional[Dict[str, CollectionSettings]] = None,
         feeds: Optional[Feeds] = None,
         fully_initialize: bool = True,
     ):
 
         self.settings = site_settings
+        self.collection_settings = (
+            collection_settings if collection_settings is not None else {}
+        )
         self.ctx = ctx if ctx is not None else {}
         self.feeds = feeds if feeds is not None else Feeds()
 
@@ -51,6 +61,7 @@ class Site:
         if not self.fully_initialized:
             self._get_jinja_env()
 
+            self._build_collections()
             self._parse_tree()
 
             self.md = MarkdownRenderer(self.settings.markdown)
@@ -79,6 +90,7 @@ class Site:
         return cls(
             site_settings=mudi_settings.site_settings,
             ctx=mudi_settings.site_ctx,
+            collection_settings=mudi_settings.collection_settings,
             feeds=mudi_settings.feeds,
             fully_initialize=fully_initialize,
         )
@@ -133,6 +145,12 @@ class Site:
                 and self.sass_in in filename.parents
             )
 
+    def _build_collections(self):
+        for collection_name, collection_settings in self.collection_settings.items():
+            self.collections[collection_name] = Collection.from_collection_settings(
+                collection_settings
+            )
+
     def _parse_tree(self):
         self.files = [
             filename
@@ -155,10 +173,13 @@ class Site:
 
     def add_page(self, page: Page):
         self.pages[page.name] = page
+        logging.info(self.collections)
         for collection in page.collections:
             if collection in self.collections:
+                logging.info(f"adding {page.name} to collection")
                 self.collections[collection].append(page)
             else:
+                logging.info(f"building new collection")
                 col = Collection(collection, [page])
                 self.collections[collection] = col
             self.env.globals["collections"] = self.collections
