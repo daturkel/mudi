@@ -53,6 +53,8 @@ class Page:
             self.ctx = metadata.pop("ctx", {})
             self.has_jinja = metadata.pop("has_jinja", False)
             self.markdown = metadata.pop("markdown", None)
+        self.next: Optional[Page]
+        self.previous: Optional[Page]
 
     def get(self, key: str, default: Any = None) -> Any:
         """Fetch a page attribute, first trying the page class attributes, then page ctx,
