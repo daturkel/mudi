@@ -128,4 +128,5 @@ def watch(
     dispatcher = MudiDispatcher(site)
     if clean:
         site.clean()
+        site.build()
     dispatcher.watch()
