@@ -21,7 +21,6 @@ class MudiDispatcher:
                 self._dispatch_page(change_type, path)
             else:
                 self._dispatch_file(change_type, path)
-        logging.info("ready...")
 
     def _dispatch_template(self, change_type: watchgod.Change, path: Path):
         logging.info("reinitializing jinja")
