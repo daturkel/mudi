@@ -250,6 +250,7 @@ class Site:
         logging.info("rendering...")
         for page in self.pages:
             self.render_page(page)
+        logging.info("rendered html")
 
     def compile_sass(self):
         if self.settings.sass is not None:
@@ -258,6 +259,7 @@ class Site:
                 dirname=(self.sass_in, self.sass_out),
                 output_style=self.settings.sass.output_style,
             )
+            logging.info("compiled sass")
 
     def copy_file(self, filename: Path):
         input_filename = self.content_dir / filename
@@ -269,11 +271,13 @@ class Site:
         logging.info("copying files...")
         for file_ in self.files_to_copy:
             self.copy_file(file_)
+        logging.info("copied files")
 
     def delete_file(self, filename: Path):
         logging.info(f"deleting file {filename}")
         output_filename = self.output_dir / filename
         output_filename.unlink()
+        logging.info(f"deleted file")
 
     def build(self):
         tic = time.perf_counter()
